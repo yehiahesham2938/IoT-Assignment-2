@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: chirpstack-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5435:5432"  # Windows reads 5435 -> sends to container 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chirpstack_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: chirpstack-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chirpstack_network
+
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    container_name: chirpstack
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      # We target the actual service names inside the internal bridge network
+      CHIRPSTACK_POSTGRESQL_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}?sslmode=disable"
+      CHIRPSTACK_REDIS_URL: "redis://redis:6379/0"
+      CHIRPSTACK_API_BIND: "0.0.0.0:8081"
+      CHIRPSTACK_API_SECRET_KEY: ${CHIRPSTACK_API_SECRET_KEY}
+    command: ["--config", "/etc/chirpstack"]
+    ports:
+      - "8081:8081"  # Windows reads 8081 -> sends to Chirpstack 8081
+      - "8000:8000"
+    volumes:
+      - ./chirpstack.toml:/etc/chirpstack/chirpstack.toml:ro
+    networks:
+      - chirpstack_network
+
+  chirpstack-rest-api:
+    image: chirpstack/chirpstack-rest-api:4
+    container_name: chirpstack-rest-api
+    depends_on:
+      - chirpstack
+    command: ["--server", "chirpstack:8081", "--bind", "0.0.0.0:8090", "--insecure"]
+    ports:
+      - "8090:8090"
+    networks:
+      - chirpstack_network
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: chirpstack-mosquitto
+    ports:
+      - "1884:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - chirpstack_network
+
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
+  postgres_data:
+  redis_data:
+
+networks:
+  chirpstack_network:
+    driver: bridge
