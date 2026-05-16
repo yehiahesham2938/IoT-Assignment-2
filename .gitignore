@@ -1,0 +1,45 @@
+# AWS Credentials and Keys
+*.pem
+*.key
+*.crt
+aws_credentials.json
+aws_config.json
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# Node modules (if using Node.js)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ChirpStack
+postgres_data/
+redis_data/
+
+# Test certificates (dummy ones only - not real AWS certs)
+certificates/
+
+# Logs
+*.log
+logs/
