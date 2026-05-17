@@ -172,9 +172,14 @@ class DeviceOTAHandler:
 
 if __name__ == "__main__":
     import sys
+    import os
+    from dotenv import load_dotenv
+    
+    # Load environment variables from .env file
+    load_dotenv()
     
     device_id = sys.argv[1] if len(sys.argv) > 1 else 'SensorNode_06'
-    aws_endpoint = 'YOUR_ENDPOINT.iot.REGION.amazonaws.com'
+    aws_endpoint = os.getenv('AWS_ENDPOINT', 'a19awyw8hpyek5-ats.iot.eu-north-1.amazonaws.com')
     
     handler = DeviceOTAHandler(device_id, aws_endpoint, 
                                f'../certificates/{device_id}/cert.pem',
