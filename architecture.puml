@@ -1,0 +1,145 @@
+@startuml IoT_Architecture
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 12
+
+' Define colors
+!define EDGE_COLOR #FF6B6B
+!define GATEWAY_COLOR #4ECDC4
+!define ONPREM_COLOR #95E1D3
+!define AWS_COLOR #FF9900
+!define SERVICE_COLOR #4A90E2
+
+rectangle "📡 LoRaWAN Edge Devices" #FFEAA7 {
+    rectangle "Zone 1 Devices" #E8F8F5 {
+        card "SensorNode_01" as SN01
+        card "SensorNode_02" as SN02
+        card "SensorNode_03" as SN03
+        card "SensorNode_04" as SN04
+        card "SensorNode_05" as SN05
+    }
+    
+    rectangle "Zone 2 Devices" #FEF9E7 {
+        card "SensorNode_06" as SN06
+        card "SensorNode_07" as SN07
+        card "SensorNode_08" as SN08
+        card "SensorNode_09" as SN09
+        card "SensorNode_10" as SN10
+    }
+}
+
+rectangle "🛰️ LoRaWAN Gateways" #F8BBD0 {
+    card "Gateway_01\n(868 MHz)" as GW01 #C2185B
+    card "Gateway_02\n(868 MHz)" as GW02 #C2185B
+}
+
+rectangle "🏢 On-Premises Infrastructure" #FFCCBC {
+    card "ChirpStack Server\n(Docker)" as ChirpStack #D84315 {
+        card "MQTT Broker\n(Port 1883)" as MQTT_Local
+        card "Network Server" as NS
+        card "Application Server" as AppServer
+    }
+}
+
+rectangle "☁️ AWS Cloud Services" #E3F2FD {
+    rectangle "AWS IoT Core" #BBDEFB {
+        card "IoT MQTT Broker\n(Port 8883 - TLS 1.2)" as IoTCore
+        card "Message Router" as Router
+        card "Device Registry\n(Thing Groups)" as Registry
+    }
+    
+    rectangle "Compute & Storage" #C8E6C9 {
+        card "Lambda Functions" as Lambda {
+            card "DiseaseRiskEngine" as DiseaseEngine
+            card "OTAStatusHandler" as OTAHandler
+        }
+        
+        card "DynamoDB" as DynamoDB {
+            card "CropTelemetry" as TelemetryTable
+            card "OTAStatusLog" as StatusTable
+            card "AlertHistory" as AlertTable
+        }
+    }
+    
+    rectangle "Notifications & Monitoring" #FFE0B2 {
+        card "SNS Topics" as SNS {
+            card "CropDiseaseAlerts" as AlertTopic
+            card "OTAUpdateNotifications" as OTATopic
+        }
+        
+        card "CloudWatch" as CloudWatch {
+            card "Logs" as Logs
+            card "Metrics" as Metrics
+        }
+    }
+}
+
+' LoRaWAN Device to Gateway connections
+SN01 --> GW01 : LoRa
+SN02 --> GW01 : LoRa
+SN03 --> GW02 : LoRa
+SN04 --> GW01 : LoRa
+SN05 --> GW02 : LoRa
+SN06 --> GW01 : LoRa
+SN07 --> GW02 : LoRa
+SN08 --> GW01 : LoRa
+SN09 --> GW02 : LoRa
+SN10 --> GW01 : LoRa
+
+' Gateway to ChirpStack
+GW01 --> MQTT_Local : Uplink Data
+GW02 --> MQTT_Local : Uplink Data
+MQTT_Local --> NS : Route Frames
+NS --> AppServer : Process Data
+
+' ChirpStack to AWS
+AppServer --> IoTCore : MQTT Bridge\n(TLS 1.2)\nTopic: dt/zone{1,2}/sensor_data
+
+' IoT Core routing
+IoTCore --> Router : Internal Routing
+Router --> Lambda : Forward Telemetry
+Router --> DynamoDB : Store Raw Data
+
+' Lambda Processing
+Lambda --> DiseaseEngine : Analyze Risk
+DiseaseEngine --> DynamoDB : Query Data
+DiseaseEngine --> AlertTopic : HIGH/CRITICAL Alert
+DiseaseEngine --> AlertTable : Log Event
+
+' Lambda OTA Handler
+Router --> OTAHandler : OTA Job Status
+OTAHandler --> OTATopic : Update Events
+OTAHandler --> StatusTable : Update Status
+
+' SNS to CloudWatch
+AlertTopic --> Logs : Alert Events
+OTATopic --> Logs : OTA Events
+Router --> Metrics : Connection Metrics
+Lambda --> Metrics : Performance Data
+DynamoDB --> Metrics : Throughput
+
+' Device Management
+Registry --> IoTCore : Thing Definitions
+Registry --> Router : Policy Enforcement
+IoTCore -.-> SN01 : Jobs (OTA Updates)
+IoTCore -.-> SN06 : Topic: $aws/things/*/jobs/*
+
+' Feedback loops
+DynamoDB --> Lambda : Query Sensor Data
+CloudWatch -.-> Lambda : Monitoring/Logging
+
+legend right
+  **Data Flow:**
+  ➜ Solid lines: Data flow
+  ⋯ Dotted lines: Control/Config
+  
+  **Key Points:**
+  • Zone 1: SensorNode_01-05 (dt/zone1/*)
+  • Zone 2: SensorNode_06-10 (dt/zone2/*)
+  • Security: X.509 Certificates, TLS 1.2
+  • OTA: AWS IoT Jobs for firmware updates
+  • Alerts: SNS → Email notifications
+endlegend
+
+@enduml
