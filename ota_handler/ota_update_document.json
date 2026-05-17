@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "target_zone": "Zone_2",
+  "description": "Updated disease risk thresholds for grape-specific patterns",
+  "update_type": "threshold_update",
+  "thresholds": {
+    "moderate_humidity_min": 70,
+    "moderate_humidity_max": 80,
+    "moderate_temp_min": 16,
+    "moderate_temp_max": 24,
+    "high_humidity": 80,
+    "high_temp_min": 18,
+    "high_temp_max": 24,
+    "critical_leaf_wetness": 6,
+    "critical_rainfall": 4
+  },
+  "rollback_thresholds": {
+    "moderate_humidity_min": 70,
+    "moderate_humidity_max": 85,
+    "moderate_temp_min": 15,
+    "moderate_temp_max": 25,
+    "high_humidity": 85,
+    "high_temp_min": 18,
+    "high_temp_max": 25,
+    "critical_leaf_wetness": 8,
+    "critical_rainfall": 5
+  },
+  "deployment_timestamp": "2024-05-16T14:30:00Z"
+}
